@@ -116,10 +116,8 @@ class VisdroneDataset(data.Dataset):
 
 
         if self.count == 1:
-            print(self.targets[0])
             return batch, self.targets[0]
         else:
-            print(self.targets[self.count - 1])
             return batch, self.targets[self.count - 1]
 
 class DetectedObject:
