@@ -1,110 +1,113 @@
+import torchvision
+from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN_ResNet50_FPN_Weights
+from torchvision import transforms, models
+from VisdroneDataset import VisdroneDataset
+import torch
+from torch.utils import data
+
+
 import os
-import time
 
-import cv2
+def main():
 
-from torchvision.io import read_image, read_video
-from torchvision.models.detection import fasterrcnn_resnet50_fpn_v2, FasterRCNN_ResNet50_FPN_V2_Weights
-from torchvision.utils import draw_bounding_boxes
-from torchvision.transforms.functional import to_pil_image
-import numpy as np
-from natsort import natsorted
+    train_path = r"C:\Users\PC\Downloads\VisDrone2019-DET-train\VisDrone2019-DET-train"
+    batch_size = 10
+    epochs = 5
+    dataset = VisdroneDataset(train_path)
 
+    def collate_fn(batch):
+        return tuple(zip(*batch))
+    dataloader = data.DataLoader(dataset, shuffle=True,batch_size=10, collate_fn=collate_fn)
 
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
 
-# Step 1: Initialize model with the best available weights
-weights = FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
-model = fasterrcnn_resnet50_fpn_v2(weights=weights, box_score_thresh=0.9)
+    in_features = model.roi_heads.box_predictor.cls_score.in_features  # we need to change the head
+    model.roi_heads.box_predictor = models.detection.faster_rcnn.FastRCNNPredictor(in_features, 11)
 
-model.eval()
-
-# Step 2: Initialize the inference transforms
-preprocess = weights.transforms()
-
-import cv2
-
-# Giriş video dosyasının yolu
-video_path = cv2.VideoCapture(r"C:\Users\PC\Downloads\istockphoto-1072509294-640_adpp_is.mp4")
-target_dir = r"C:\Users\PC\PycharmProjects\pythonProject2\frame_folder"
-def extract_frames(target_dir, video):
-    if not os.path.exists(target_dir):
-        os.mkdir(target_dir)
-
-    count = 0
-    while True:
-        success, image = video.read()
-        if not success:
-            break
-        else:
-
-            direction = os.path.join(target_dir, "frame%d.jpg")
-            cv2.imwrite(direction % count, image)  # save frame as JPEG file
-            if cv2.waitKey(10) == 27:  # exit if Escape is hit
-                break
-            count += 1
+    params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.9, nesterov=True, weight_decay=1e-4)
 
 
+    # 6. Modeli eğitin
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    model.to(device)
 
-def remove_frame_folder(target_dir):
-    frame_list = os.listdir(target_dir)
-    for frame in frame_list:
-        os.remove(os.path.join(target_dir, frame))
-    os.rmdir(target_dir)
+    total_num_batches = int(len(dataset)) / batch_size
+    print("total data: ", len(dataset))
 
+    model_path = os.path.abspath(os.path.dirname(__file__)) + '/weights/'
+    latest_model = None
+    first_epoch = 0
+    if not os.path.isdir(model_path):
+        os.mkdir(model_path)
+    else:
+        try:
+            latest_model = [x for x in sorted(os.listdir(model_path)) if x.endswith('.pkl')][-1]
+        except:
+            pass
 
-results = []
-# Step 3: Apply inference preprocessing transforms
-def detection(img):
- batch = [preprocess(img)]
+    if latest_model is not None:
+        checkpoint = torch.load(model_path + latest_model)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        torch.optim.SGD.load_state_dict(checkpoint['optimizer_state_dict'])
+        first_epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
 
-# Step 4: Use the model and visualize the prediction
- prediction = model(batch)[0]
- labels = [weights.meta["categories"][i] for i in prediction["labels"]]
- box = draw_bounding_boxes(img, boxes=prediction["boxes"],
-                          labels=labels,
-                          colors="red",
-                          width=4, font_size=30)
- im = to_pil_image(box.detach())
+        print('Found previous checkpoint: %s at epoch %s' % (latest_model, first_epoch))
+        print('Resuming training....')
 
+    for epoch in range(2):
+        model.train()
+        all_losses = []
+        all_losses_dict = []
+        curr_batch = 0
+        passes = 0
+        for count, batch in enumerate(dataloader):
+            images, targets = batch
 
- return im
-result_folder = r"C:\Users\PC\PycharmProjects\pythonProject2\results"
-os.mkdir(result_folder)
-direction2 = os.path.join(result_folder, "frame%d.jpg")
+            images = [image.cpu() for image in images]
+            targets = [{k: torch.tensor(v).to(device) for k, v in t.items()} for t in targets]
 
-extract_frames(target_dir, video_path)
-def detect_one_by_one():
-    frame_list = os.listdir(target_dir)
-    sorted_frame_list = natsorted(frame_list)
-    for frame_num, frame in enumerate(sorted_frame_list):
-        baslangic = time.time()
-        print(frame)
-        frame_dir = os.path.join(target_dir, frame)
-        img = read_image(frame_dir)
-        result = detection(img)
-        print(result)
-        cv2.imwrite(direction2 % frame_num, np.array(result))
-        bitis = time.time()
-        print(bitis - baslangic)
-        results.append(result)
+            loss_dict = model(images, targets)
+            losses = sum(loss for loss in loss_dict.values())
+            loss_dict_append = {k: v.item() for k, v in loss_dict.items()}
+            loss_value = losses.item()
+
+            all_losses.append(loss_value)
+            all_losses_dict.append(loss_dict_append)
 
 
 
+            optimizer.zero_grad()
+            losses.backward()
+            optimizer.step()
+            print(passes)
+            if (passes % 10
 
-detect_one_by_one()
+                    == 0):
+                print("--- epoch %s | batch %s/%s --- [loss: %s]" %(epoch, curr_batch, total_num_batches, losses.item()))
+                passes = 0
+
+            passes += 1
+            curr_batch += 1
+        print(epoch)
+        if epoch == 1:
+            name = model_path + 'epoch_%s.pkl' % epoch
+            print("====================")
+            print("Done with epoch %s!" % epoch)
+            print("Saving weights as %s ..." % name)
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': losses
+            }, name)
+            print("====================")
 
 
 
-
-
-remove_frame_folder(target_dir)
-
-
-
-
-
-# Giriş video dosyasının yolu
-
+if __name__ == '__main__':
+    main()
 
 
 
