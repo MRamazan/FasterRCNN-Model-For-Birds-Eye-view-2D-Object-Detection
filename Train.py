@@ -29,7 +29,7 @@ def main():
     optimizer = torch.optim.Adam(params, lr=0.001)
 
 
-    # 6. Modeli eğitin
+    
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model.to(device)
 
