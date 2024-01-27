@@ -11,7 +11,7 @@ from natsort import natsorted
 
 
 
-# Step 1: Initialize model with the best available weights
+
 model_path = r'C:\Users\PC\PycharmProjects\pythonProject2\weights\epoch_1.pkl'
 model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
 
@@ -160,7 +160,7 @@ if __name__ == '__main__':
  extract_frames(target_dir, video_path)
  draw_boxes(os.listdir(target_dir))
 
-# Giriş video dosyasının yolu
+
 
 
 
