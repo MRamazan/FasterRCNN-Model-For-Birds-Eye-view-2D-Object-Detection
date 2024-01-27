@@ -95,11 +95,11 @@ class VisdroneDataset(data.Dataset):
             cv2.waitKey(0)'''
 
 
-            # crop image
+            
 
 
 
-        # recolor, reformat
+       
         boxes = torch.stack(boxes)
         labels = torch.stack(labels)
         label = {
