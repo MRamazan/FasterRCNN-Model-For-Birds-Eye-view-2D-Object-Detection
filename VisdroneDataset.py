@@ -1,8 +1,5 @@
 import PIL
-import cv2
 import os
-
-import numpy as np
 import torch
 from torchvision import transforms
 from torch.utils import data
@@ -53,21 +50,10 @@ class VisdroneDataset(data.Dataset):
             return msg
 
 
-
-
-
-
-
-
-    def read_image(self, image_dir):
-        image = cv2.imread(image_dir)
-        assert image is not None, f"File {image_dir} does not exist or broken!"
-        return image
-
     def __getitem__(self, idx):
         self.count += 1
-        target = {}
         labels = []
+        target = {}
         boxes = []
         image = self.image_list[idx]
         image_dir = os.path.join(self.image_dir, image)
@@ -139,3 +125,5 @@ class VisdroneDataset(data.Dataset):
         else:
 
             return batch, self.targets[self.count - 1]
+
+
