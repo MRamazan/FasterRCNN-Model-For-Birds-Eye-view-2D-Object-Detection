@@ -1,18 +1,13 @@
 import os
-import threading
 import time
 import cv2
-
-
 import tkinter as tk
-from tkinter import simpledialog, Listbox, ttk, PhotoImage
-from PIL import Image, ImageTk
 from tkinter import *
 from natsort import natsorted
 import Run
 
 
-class arayuz_tasarim():
+class main():
     def __init__(self):
         self.input = "None"
         self.window = tk.Tk()
@@ -37,7 +32,7 @@ class arayuz_tasarim():
         Run.extract_frames(self.target_folder, self.input)
         self.frame_list = os.listdir(self.target_folder)
         total_image = len(self.frame_list)
-        self.islem_ekranı(total_image,1.47)
+        self.process_page(total_image,1.47)
 
 
 
@@ -47,7 +42,7 @@ class arayuz_tasarim():
 
 
 
-    def ana_ekran(self):
+    def home_page(self):
         self.clear_window(self.window)
         self.window.config(background="lightblue")
         self.window.geometry("900x900")
@@ -91,11 +86,11 @@ class arayuz_tasarim():
     def back_to_main(self, progress_bar):
         progress_bar.stop()
         self.clear_window(self.window)
-        self.ana_ekran()
+        self.home_page()
 
 
 
-    def islem_ekranı(self, total_image_count, processing_time_per_img):
+    def process_page(self, total_image_count, processing_time_per_img):
         start_time = time.strftime("%H:%M")
 
 
@@ -104,7 +99,7 @@ class arayuz_tasarim():
         self.window.config(background="black")
 
 
-        text =  "Video will be read in about  " + str(total_sure) + "  Minutes"
+        text =  "Video will be ready in about  " + str(total_sure) + "  Minutes"
 
         label1 = tk.Label(self.window, text=text, background="black", width=40, height=5, font=("Arial", 15), fg="blue")
         buton = tk.Button(self.window, text="START PROCESS", width=30, height=10,font=("Arial", 15), command=self.start_process, background="blue")
@@ -138,7 +133,7 @@ class arayuz_tasarim():
     def start_process(self):
         self.window.destroy()
         Run.draw_boxes(self.frame_list)
-        self.play_video()
+        self.start_video()
 
 
 
@@ -152,7 +147,7 @@ class arayuz_tasarim():
         self.window = tk.Tk()
         self.window.config(background="lightblue")
         self.window.geometry("900x900")
-        buton = tk.Button(self.window, text="START VIDEO",width=30,height=10,font=("Arial", 15),command=self.play_video)
+        buton = tk.Button(self.window, text="START VIDEO",width=30,height=10,font=("Arial", 15),command=self.play_video, background="blue")
         buton.place(x=275, y=150)
 
     def play_video(self):
@@ -168,15 +163,15 @@ class arayuz_tasarim():
 
         cv2.destroyAllWindows()
         self.window.deiconify()
-        self.ana_ekran()
+        self.home_page()
 
 
 
 
 
 if __name__ == '__main__':
- x = arayuz_tasarim()
- x.ana_ekran()
+ x = main()
+ x.home_page()
 
 
 
