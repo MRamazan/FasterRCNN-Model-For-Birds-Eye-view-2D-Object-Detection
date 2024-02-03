@@ -52,8 +52,8 @@ class VisdroneDataset(data.Dataset):
 
     def __getitem__(self, idx):
         self.count += 1
-        labels = []
         target = {}
+        labels = []
         boxes = []
         image = self.image_list[idx]
         image_dir = os.path.join(self.image_dir, image)
